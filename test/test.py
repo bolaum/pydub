@@ -1,5 +1,4 @@
 from functools import partial
-import mimetypes
 import os
 import sys
 import unittest
@@ -92,6 +91,9 @@ class AudioSegmentTests(unittest.TestCase):
         self.ogg_file_path = os.path.join(data_dir, 'bach.ogg')
         self.mp4_file_path = os.path.join(data_dir, 'creative_common.mp4')
         self.mp3_file_path = os.path.join(data_dir, 'party.mp3')
+
+        self.jpg_cover_path = os.path.join(data_dir, 'cover.jpg')
+        self.png_cover_path = os.path.join(data_dir, 'cover.png')
 
     def assertWithinRange(self, val, lower_bound, upper_bound):
         self.assertTrue(lower_bound < val < upper_bound,
@@ -529,36 +531,26 @@ class AudioSegmentTests(unittest.TestCase):
         with NamedTemporaryFile('w+b', suffix='.mp3') as tmp_mp3_file:
             AudioSegment.from_file(self.ogg_file_path).export(tmp_mp3_file,
                                                               format="mp3")
-            tmp_file_type, _ = mimetypes.guess_type(tmp_mp3_file.name)
-            self.assertEqual(tmp_file_type, 'audio/mpeg')
 
     def test_export_mp3_as_ogg(self):
         with NamedTemporaryFile('w+b', suffix='.ogg') as tmp_ogg_file:
             AudioSegment.from_file(self.mp3_file_path).export(tmp_ogg_file,
                                                               format="ogg")
-            tmp_file_type, _ = mimetypes.guess_type(tmp_ogg_file.name)
-            self.assertEqual(tmp_file_type, 'audio/ogg')
 
     def test_export_mp4_as_ogg(self):
         with NamedTemporaryFile('w+b', suffix='.ogg') as tmp_ogg_file:
             AudioSegment.from_file(self.mp4_file_path).export(tmp_ogg_file,
                                                               format="ogg")
-            tmp_file_type, _ = mimetypes.guess_type(tmp_ogg_file.name)
-            self.assertEqual(tmp_file_type, 'audio/ogg')
 
     def test_export_mp4_as_mp3(self):
         with NamedTemporaryFile('w+b', suffix='.mp3') as tmp_mp3_file:
             AudioSegment.from_file(self.mp4_file_path).export(tmp_mp3_file,
                                                               format="mp3")
-            tmp_file_type, _ = mimetypes.guess_type(tmp_mp3_file.name)
-            self.assertEqual(tmp_file_type, 'audio/mpeg')
 
     def test_export_mp4_as_wav(self):
         with NamedTemporaryFile('w+b', suffix='.wav') as tmp_wav_file:
             AudioSegment.from_file(self.mp4_file_path).export(tmp_wav_file,
                                                               format="mp3")
-            tmp_file_type, _ = mimetypes.guess_type(tmp_wav_file.name)
-            self.assertEqual(tmp_file_type in ['audio/x-wav', 'audio/wav'], True)
 
     def test_export_mp4_as_mp3_with_tags(self):
         with NamedTemporaryFile('w+b', suffix='.mp3') as tmp_mp3_file:
@@ -570,8 +562,6 @@ class AudioSegmentTests(unittest.TestCase):
             AudioSegment.from_file(self.mp4_file_path).export(tmp_mp3_file,
                                                               format="mp3",
                                                               tags=tags_dict)
-            tmp_file_type, _ = mimetypes.guess_type(tmp_mp3_file.name)
-            self.assertEqual(tmp_file_type, 'audio/mpeg')
 
     def test_export_mp4_as_mp3_with_tags_raises_exception_when_tags_are_not_a_dictionary(self):
         with NamedTemporaryFile('w+b', suffix='.mp3') as tmp_mp3_file:
@@ -612,6 +602,24 @@ class AudioSegmentTests(unittest.TestCase):
 
             if sys.platform == 'win32':
                 os.remove(tmp_mp3_file.name)
+
+    def test_mp3_with_jpg_cover_img(self):
+        with NamedTemporaryFile('w+b', suffix='.mp3') as tmp_mp3_file:
+            outf = self.seg1.export(tmp_mp3_file, format="mp3", cover=self.jpg_cover_path)
+            testseg = AudioSegment.from_file(outf, format="mp3")
+
+            # should be within a 150ms and 1.5dB (not perfectly equal due to codecs)
+            self.assertWithinTolerance(len(self.seg1), len(testseg), 150)
+            self.assertWithinTolerance(self.seg1.dBFS, testseg.dBFS, 1.5)
+
+    def test_mp3_with_png_cover_img(self):
+        with NamedTemporaryFile('w+b', suffix='.mp3') as tmp_mp3_file:
+            outf = self.seg1.export(tmp_mp3_file, format="mp3", cover=self.png_cover_path)
+            testseg = AudioSegment.from_file(outf, format="mp3")
+
+            # should be within a 150ms and 1.5dB (not perfectly equal due to codecs)
+            self.assertWithinTolerance(len(self.seg1), len(testseg), 150)
+            self.assertWithinTolerance(self.seg1.dBFS, testseg.dBFS, 1.5)
 
     def test_fade_raises_exception_when_duration_start_end_are_none(self):
         seg = self.seg1

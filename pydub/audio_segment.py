@@ -506,7 +506,7 @@ class AudioSegment(object):
         file.seek(0)
         return cls(data=file)
 
-    def export(self, out_f=None, format='mp3', codec=None, bitrate=None, parameters=None, tags=None, id3v2_version='4'):
+    def export(self, out_f=None, format='mp3', codec=None, bitrate=None, parameters=None, tags=None, id3v2_version='4', cover=None):
         """
         Export an AudioSegment to a file with given options
 
@@ -535,6 +535,9 @@ class AudioSegment(object):
 
         id3v2_version (string)
             Set ID3v2 version for tags. (default: '4')
+
+        cover (file)
+            Set cover for audio file from image file. (png or jpg)
         """
         id3v2_allowed_versions = ['3', '4']
 
@@ -577,6 +580,12 @@ class AudioSegment(object):
 
         if codec is None:
             codec = self.DEFAULT_CODECS.get(format, None)
+
+        if cover is not None:
+            if cover.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff')) and format == "mp3":
+                conversion_command.extend(["-i" , cover, "-map", "0", "-map", "1", "-c:v", "mjpeg"])
+            else:
+                raise AttributeError("Currently cover images are only supported by MP3 files. The allowed image formats are: .tif, .jpg, .bmp, .jpeg and .png.")
 
         if codec is not None:
             # force audio encoder
@@ -622,7 +631,7 @@ class AudioSegment(object):
         p_out, p_err = p.communicate()
 
         if p.returncode != 0:
-            raise CouldntEncodeError("Encoding failed. ffmpeg/avlib returned error code: {0}\n\nOutput from ffmpeg/avlib:\n\n{1}".format(p.returncode, p_err))
+            raise CouldntEncodeError("Encoding failed. ffmpeg/avlib returned error code: {0}\n\nCommand:{1}\n\nOutput from ffmpeg/avlib:\n\n{2}".format(p.returncode, conversion_command, p_err))
 
         output.seek(0)
         out_f.write(output.read())
